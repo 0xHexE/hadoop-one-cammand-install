@@ -4,7 +4,6 @@
 # Github https://github.com/httpsOmkar
 # Stackoverflow https://stackoverflow.com/users/7177984/omkar-yadav
 
-APACHE_HADOOP_VERSION="hadoop-3.1.2"
 CURRENT_OS=""
 JAVA_PATH=""
 
@@ -147,7 +146,7 @@ function check_is_hadoop_already_installed() {
 function setup_user_and_groups() {
     addgroup hadoop
     adduser "–ingroup hadoop hduser"
-    sudo adduser hduser sudo
+    adduser hduser sudo
     ssh-keygen -t rsa -f id_rsa -t rsa -N ''
     HOME_FOLDER_OF_HDUSER="$(getent passwd someuser | cut -f6 -d:))"
     cat ./id_rsa.pub >> ${HOME_FOLDER_OF_HDUSER}/.ssh/authorized_keys
@@ -155,10 +154,37 @@ function setup_user_and_groups() {
 
 if [[ $# -lt 1 ]]; then
   echo "Hadoop one cammand install"
-  echo "Usage: [sudo] $0 [--test | --delete | --import csv_file]"
+  echo "Usage: [sudo] $0 [--from]"
   exit 1
 fi
 
+if [[ -z ${APACHE_HADOOP_VERSION+x} ]]; then
+    APACHE_HADOOP_VERSION="hadoop-3.1.2"
+fi
+
+flag=$1
+
+case $flag in
+  "--from" )
+    from_source="$2"
+
+    case $from_source in
+    "apache")
+       download_apache_hadoop;;
+    "file")
+        from_the_file;;
+    esac
+
+    if [[ -z "$from_source" ]]; then
+      echo "Error: missing 'from' argument"
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Unrecognised flag '$flag'"
+    exit 1
+    ;;
+esac
 
 check_is_root
 check_is_hadoop_already_installed
