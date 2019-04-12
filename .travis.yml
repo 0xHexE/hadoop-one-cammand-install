@@ -1,4 +1,3 @@
 language: bash
-
 script:
-  - bash hadoop-one.sh --from apache
+  - sudo bash hadoop-one.sh --from apache
