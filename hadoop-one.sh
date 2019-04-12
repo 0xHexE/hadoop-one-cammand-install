@@ -88,7 +88,7 @@ function setup_apache_hadoop() {
     mkdir -p /app/hadoop/tmp
     chown hduser:hadoop /app/hadoop/tmp
 
-    echo "
+    CORE_SITE_CONFIG="
     <configuration>
         <property>
             <name>hadoop.tmp.dir</name>
@@ -101,14 +101,15 @@ function setup_apache_hadoop() {
           <description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.  The uri’s scheme determines the config property (fs.SCHEME.impl) naming the FileSystem implementation class.  The uri’s authority is used to determine the host, port, etc. for a filesystem.</description>
          </property>
     </configuration>
-    " >> /usr/local/hadoop/etc/hadoop/core-site.xml
+    "
+
+    echo "$CORE_SITE_CONFIG"  >> /usr/local/hadoop/etc/hadoop/core-site.xml
 
     mkdir -p /usr/local/hadoop_store/hdfs/namenode
     mkdir -p /usr/local/hadoop_store/hdfs/datanode
     chown -R hduser:hadoop /usr/local/hadoop_store
 
-    echo "
-    <configuration>
+    HDFS_SITE="<configuration>
         <property>
             <name>dfs.replication</name>
             <value>1</value>
@@ -122,17 +123,19 @@ function setup_apache_hadoop() {
             <name>dfs.datanode.data.dir</name>
             <value>file:/usr/local/hadoop_store/hdfs/datanode</value>
         </property>
-    </configuration>
-    " >> /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+    </configuration>"
+    echo "$HDFS_SITE">> /usr/local/hadoop/etc/hadoop/hdfs-site.xml
 
-    "
+    YARN_SITE_CONFIG="
     <configuration>
         <property>
             <name>yarn.nodemanager.aux-services</name>
             <value>mapreduce_shuffle</value>
         </property>
     </configuration>
-    " >> /usr/local/hadoop/etc/hadoop/yarn-site.xml
+    "
+
+    echo "$YARN_SITE_CONFIG" >> /usr/local/hadoop/etc/hadoop/yarn-site.xml
 
     hadoop namenode -format
     source /usr/local/hadoop/sbin/start-all.sh
