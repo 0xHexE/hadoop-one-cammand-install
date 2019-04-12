@@ -67,9 +67,8 @@ function detect_os() {
 
 function download_apache_hadoop() {
     wget -c "http://apache.mirrors.tds.net/hadoop/common/$APACHE_HADOOP_VERSION/$APACHE_HADOOP_VERSION.tar.gz"
-    tar -xzvf "$APACHE_HADOOP_VERSION.tar.gz"
     mkdir -p /usr/local/hadoop
-    sudo mv "$APACHE_HADOOP_VERSION" /usr/local/hadoop
+    tar -xzvf "$APACHE_HADOOP_VERSION.tar.gz" --directory "/usr/local/hadoop"
 }
 
 function setup_apache_hadoop() {
@@ -152,6 +151,21 @@ function setup_user_and_groups() {
     cat ./id_rsa.pub >> ${HOME_FOLDER_OF_HDUSER}/.ssh/authorized_keys
 }
 
+function from_the_file() {
+    if [[ ! -f "$3" ]]; then
+        echo "File not found!"
+        exit 1
+    fi
+    mkdir -p /usr/local/hadoop
+    tar -xvfz "$3" --directory "/usr/local/hadoop"
+    retVal=$?
+    if [[ $? -ne 0 ]]; then
+        exit $?
+    fi
+}
+
+check_is_root
+
 if [[ $# -lt 1 ]]; then
   echo "Hadoop one cammand install"
   echo "Usage: [sudo] $0 [--from]"
@@ -172,6 +186,10 @@ case $flag in
     "apache")
        download_apache_hadoop;;
     "file")
+        if [[ -z "$3" ]]; then
+          echo "Error: missing 'file' argument"
+          exit 1
+        fi
         from_the_file;;
     esac
 
@@ -186,7 +204,6 @@ case $flag in
     ;;
 esac
 
-check_is_root
 check_is_hadoop_already_installed
 detect_os
 check_java_version
