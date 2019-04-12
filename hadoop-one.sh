@@ -68,7 +68,23 @@ function detect_os() {
 function download_apache_hadoop() {
     wget -c "http://apache.mirrors.tds.net/hadoop/common/$APACHE_HADOOP_VERSION/$APACHE_HADOOP_VERSION.tar.gz"
     mkdir -p /usr/local/hadoop
-    tar -xzvf "$APACHE_HADOOP_VERSION.tar.gz" --directory "/usr/local/hadoop"
+    tar -xf "$APACHE_HADOOP_VERSION.tar.gz"
+    mv "$APACHE_HADOOP_VERSION" /usr/local/hadoop
+}
+
+function from_the_file() {
+    if [[ ! -f "$3" ]]; then
+        echo "File not found!"
+        exit 1
+    fi
+    mkdir -p /usr/local/hadoop
+    echo "Extracting file"
+    tar -xf "$3"
+    mv "$APACHE_HADOOP_VERSION" /usr/local/hadoop
+    retVal=$?
+    if [[ $? -ne 0 ]]; then
+        exit $?
+    fi
 }
 
 function setup_apache_hadoop() {
@@ -146,25 +162,22 @@ function check_is_hadoop_already_installed() {
 }
 
 function setup_user_and_groups() {
-    addgroup hadoop
-    adduser "–ingroup hadoop hduser"
-    adduser hduser sudo
+    case $CURRENT_OS in
+    "UBUNTU")
+        addgroup hadoop
+        adduser "–ingroup hadoop hduser"
+        adduser hduser sudo
+    ;;
+    "ARCH LINUX")
+        useradd hduser
+        groupadd hadoop
+        usermod -aG hadoop hduser
+        echo "hduser ALL=(ALL) ALL" >> /etc/sudoers
+    ;;
+    esac
     ssh-keygen -t rsa -f id_rsa -t rsa -N ''
     HOME_FOLDER_OF_HDUSER="$(getent passwd someuser | cut -f6 -d:))"
     cat ./id_rsa.pub >> ${HOME_FOLDER_OF_HDUSER}/.ssh/authorized_keys
-}
-
-function from_the_file() {
-    if [[ ! -f "$3" ]]; then
-        echo "File not found!"
-        exit 1
-    fi
-    mkdir -p /usr/local/hadoop
-    tar -xvfz "$3" --directory "/usr/local/hadoop"
-    retVal=$?
-    if [[ $? -ne 0 ]]; then
-        exit $?
-    fi
 }
 
 check_is_root
@@ -210,4 +223,5 @@ esac
 check_is_hadoop_already_installed
 detect_os
 check_java_version
+setup_user_and_groups
 setup_apache_hadoop
