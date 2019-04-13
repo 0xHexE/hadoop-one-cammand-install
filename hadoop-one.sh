@@ -22,16 +22,17 @@ function get_java_home() {
 
 function check_java_version() {
     if type -p java; then
-        readlink -f $(which java)
         get_java_home
     else
         echo "Java is not installed"
         case "$CURRENT_OS" in
             "UBUNTU") {
-                apt-get install default-jdk ssh
+                apt-get install default-jdk ssh -y
+                service ssh start
             } ;;
             "ARCH LINUX") {
                 pacman -S jdk8-openjdk ssh
+                systemctl start sshd
             } ;;
         esac
         get_java_home
@@ -39,7 +40,6 @@ function check_java_version() {
 }
 
 function detect_os() {
-    echo "Finding the current OS"
     osType=$(uname)
     case "$osType" in
             "Darwin") {
@@ -69,6 +69,9 @@ function download_apache_hadoop() {
     wget -c "http://apache.mirrors.tds.net/hadoop/common/$APACHE_HADOOP_VERSION/$APACHE_HADOOP_VERSION.tar.gz"
     mkdir -p /usr/local/hadoop
     tar -xf "$APACHE_HADOOP_VERSION.tar.gz"
+    cd "$APACHE_HADOOP_VERSION"
+    mv * /usr/local/hadoop
+    cd ..; rm -rf "$APACHE_HADOOP_VERSION"
     mv "$APACHE_HADOOP_VERSION" /usr/local/hadoop
 }
 
@@ -88,7 +91,7 @@ function from_the_file() {
 }
 
 function setup_apache_hadoop() {
-    sudo chown -R hduser:hadoop /usr/local/hadoop
+    chown -R hduser:hadoop /usr/local/hadoop
     echo "export JAVA_HOME=$JAVA_PATH" >> ~/.bashrc
     echo "export HADOOP_HOME=/usr/local/hadoop" >> ~/.bashrc
     echo "export PATH=\$PATH:\$HADOOP_HOME/bin" >> ~/.bashrc
@@ -98,7 +101,7 @@ function setup_apache_hadoop() {
     echo "export HADOOP_HDFS_HOME=\$HADOOP_HOME" >> ~/.bashrc
     echo "export YARN_HOME=\$HADOOP_HOME" >> ~/.bashrc
     echo "export HADOOP_COMMON_LIB_NATIVE_DIR=\$HADOOP_HOME/lib/native" >> ~/.bashrc
-    echo "export HADOOP_OPTS=\"-Djava.library.path=\$HADOOP_HOME/lib" >> ~/.bashrc
+    echo "export HADOOP_OPTS=\"-Djava.library.path=\$HADOOP_HOME/lib\"" >> ~/.bashrc
     source ~/.bashrc
     echo "export JAVA_HOME=$JAVA_PATH">> /usr/local/hadoop/etc/hadoop/hadoop-env.sh
     mkdir -p /app/hadoop/tmp
@@ -154,7 +157,11 @@ function setup_apache_hadoop() {
     echo "$YARN_SITE_CONFIG" >> /usr/local/hadoop/etc/hadoop/yarn-site.xml
 
     hadoop namenode -format
+    chown -R hduser:hadoop /usr/local/hadoop
+
+    su hduser <<'EOF'
     source /usr/local/hadoop/sbin/start-all.sh
+EOF
 }
 
 function check_is_hadoop_already_installed() {
@@ -162,6 +169,7 @@ function check_is_hadoop_already_installed() {
 }
 
 function setup_user_and_groups() {
+    echo "Settings groups and user for $CURRENT_OS"
     case $CURRENT_OS in
     "UBUNTU")
         addgroup hadoop
@@ -169,15 +177,18 @@ function setup_user_and_groups() {
         adduser hduser sudo
     ;;
     "ARCH LINUX")
-        useradd hduser
         groupadd hadoop
+        useradd hduser -m -g users,hadoop -G hadoop
         usermod -aG hadoop hduser
         echo "hduser ALL=(ALL) ALL" >> /etc/sudoers
     ;;
     esac
+    rm id_rsa id_rsa.pub
+    su hduser <<'EOF'
     ssh-keygen -t rsa -f id_rsa -t rsa -N ''
-    HOME_FOLDER_OF_HDUSER="$(getent passwd someuser | cut -f6 -d:))"
-    cat ./id_rsa.pub >> ${HOME_FOLDER_OF_HDUSER}/.ssh/authorized_keys
+    mkdir -p ~/.ssh # Hack for arch
+    cat ./id_rsa.pub >> ~/.ssh/authorized_keys
+EOF
 }
 
 check_is_root
