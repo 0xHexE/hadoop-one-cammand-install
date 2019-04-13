@@ -173,7 +173,7 @@ function setup_user_and_groups() {
     case $CURRENT_OS in
     "UBUNTU")
         addgroup hadoop
-        adduser "–ingroup hadoop hduser"
+        adduser "–-ingroup" hadoop hduser # ESCAPE THE STRING
         adduser hduser sudo
     ;;
     "ARCH LINUX")
